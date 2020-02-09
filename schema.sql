@@ -1,3 +1,5 @@
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'password';
+
 drop database if exists employeeTracker_DB;
 create database employeeTracker_DB;
 use employeeTracker_DB;
