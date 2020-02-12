@@ -113,9 +113,9 @@ function initiateQues() {
 }
 
 function queryAllEmployees() {
-    let query = 'SELECT employee.position, employee.firstName, employee.lastName, role.title, role.salary, department.departName ';
-    query += 'FROM employee, role, department WHERE employee.roleID = role.position AND role.departmentID = department.position ';
-    query += 'order by employee.position;';
+    let query = 'SELECT employee.position, employee.firstName, employee.lastName, role.title, department.departName, role.salary, ';
+    query += 'manager.managerName FROM employee, role, department, manager WHERE employee.roleID = role.position ';
+    query += 'AND role.departmentID = department.position AND employee.managerID = manager.position ORDER BY employee.position';
     connection.query(query, function (err, res) {
         if (err) throw err;
         const resArray = [];
@@ -136,8 +136,9 @@ function queryAllEmployees() {
                 'firstName': res[i].firstName,
                 'lastName': res[i].lastName,
                 'title': res[i].title,
+                'departName': res[i].departName,
                 'salary': res[i].salary,
-                'departName': res[i].departName
+                'managerName': res[i].managerName
             };
             resArray.push(row);
         }
@@ -152,57 +153,82 @@ function queryAllEmployees() {
 
 function addEmployee() {
     console.log("Inserting a new employee...\n");
-    let query = "select role.position, role.title from role";
-    connection.query(query, function (err, res) {
+    let query01 = "SELECT role.position, role.title FROM role";
+    connection.query(query01, function (err, res01) {
         if (err) throw err;
+        console.log(res01);
         const roleArray = [];
-        res.forEach(element => {
-            roleArray.push(element.title)
+        res01.forEach(element => {
+            roleArray.push(element.title);
         })
-        console.log(roleArray);
-        const addEmployeeQues = [
-            {
-                type: 'input',
-                message: 'Enter employee first name',
-                name: 'firstName',
-                validate: validateName
-            },
-            {
-                type: 'input',
-                message: 'Enter employee last name',
-                name: 'lastName',
-                validate: validateName
-            },
-            {
-                type: 'list',
-                message: 'Select employee role',
-                name: 'roleSelect',
-                choices: roleArray
-                // validate: validateName
-            }
-        ]
-        inquirer.prompt(addEmployeeQues)
-        .then((data) => {
-            console.log(res);
-            res.forEach(element => {
-                if (data.roleSelect === element.title) {
-                    const rolePos = element.position;
-                    console.log(rolePos);
-                    let query = "insert into employee set ?";
-                    connection.query(query,
-                    {
-                        firstName: data.firstName.charAt(0).toUpperCase() + data.firstName.slice(1),
-                        lastName: data.lastName.charAt(0).toUpperCase() + data.lastName.slice(1),
-                        roleID: rolePos
-                    },
-                    function (err, res) {
-                        if (err) throw err;
-                        console.log(res.affectedRows + " employee added!\n");
-                        initiateQues();
-                    })
-                }
+        let query02 = "SELECT manager.position, manager.managerName FROM manager";
+        connection.query(query02, function (err, res02) {
+            if (err) throw err;
+            console.log(res02);
+            const managerArray = [];
+            res02.forEach(element => {
+                managerArray.push(element.managerName);
             })
-            // const rolePos = matchRoleSelect(res, data);
+            console.log(roleArray);
+            console.log(managerArray);
+            const addEmployeeQues = [
+                {
+                    type: 'input',
+                    message: 'Enter employee first name',
+                    name: 'firstName',
+                    validate: validateName
+                },
+                {
+                    type: 'input',
+                    message: 'Enter employee last name',
+                    name: 'lastName',
+                    validate: validateName
+                },
+                {
+                    type: 'list',
+                    message: 'Select employee role',
+                    name: 'roleSelect',
+                    choices: roleArray
+                    // validate: validateName
+                },
+                {
+                    type: 'list',
+                    message: 'Assign manager',
+                    name: 'managerSelect',
+                    choices: managerArray
+                    // validate: validateName
+                }
+            ]
+            inquirer.prompt(addEmployeeQues)
+            .then((data) => {
+                // console.log(res01);
+                res01.forEach(element => {
+                    if (data.roleSelect === element.title) {
+                        const rolePos = element.position;
+                        console.log(rolePos);
+                        res02.forEach(element => {
+                            if (data.managerSelect === element.managerName) {
+                                const managerPos = element.position;
+                                console.log(managerPos);
+                                let query = "INSERT INTO employee SET ?";
+                                connection.query(query,
+                                {
+                                    firstName: data.firstName.charAt(0).toUpperCase() + data.firstName.slice(1),
+                                    lastName: data.lastName.charAt(0).toUpperCase() + data.lastName.slice(1),
+                                    roleID: rolePos,
+                                    managerID: managerPos
+                                },
+                                function (err, res) {
+                                    if (err) throw err;
+                                    console.log(res.affectedRows + " employee added!\n");
+                                    initiateQues();
+                                })
+                            }
+                        })
+                    }
+                })
+                // const rolePos = matchRoleSelect(res, data);
+            });
         });
     });
 }
@@ -219,7 +245,7 @@ function matchRoleSelect(response, data) {
 
 function deleteEmployee() {
     console.log("Deleting an existing employee...\n");
-    let query = "select employee.position, employee.firstName, employee.lastName from employee";
+    let query = "SELECT employee.position, employee.firstName, employee.lastName FROM employee";
     connection.query(query, function (err, res) {
         if (err) throw err;
         const employeeArray = [];
@@ -247,7 +273,7 @@ function deleteEmployee() {
             res.forEach(element => {
                 if(element.firstName === answerSplit[0] && element.lastName === answerSplit[1]) {
                     const employPos = element.position;
-                    let query = "delete from employee where employee.position = ?";
+                    let query = "DELETE FROM employee WHERE employee.position = ?";
                     connection.query(query,
                     [
                         employPos
@@ -265,7 +291,7 @@ function deleteEmployee() {
 }
 
 function queryByDepartment() {
-    let query = "select department.departName from department";
+    let query = "SELECT department.departName FROM department";
     connection.query(query, function (err, res) {
         if (err) throw err;
         const departArray = [];
@@ -286,7 +312,7 @@ function queryByDepartment() {
         .then((data) => {
             let query = 'SELECT employee.position, employee.firstName, employee.lastName, role.title, role.salary, department.departName ';
             query += 'FROM employee, role, department WHERE employee.roleID = role.position AND role.departmentID = department.position ';
-            query += 'and department.departName = ?order by employee.position;';
+            query += 'AND department.departName = ? ORDER BY employee.position;';
             connection.query(query,
             [
                 data.departSelect
@@ -320,7 +346,7 @@ function queryByDepartment() {
 
 function updateRole() {
     console.log("Updating an existing role...\n");
-    let query = "select role.title, role.salary from role";
+    let query = "SELECT role.title, role.salary FROM role";
     connection.query(query, function (err, res) {
         if (err) throw err;
         const roleArray = [];
@@ -345,7 +371,7 @@ function updateRole() {
         ]
         inquirer.prompt(updateRoleQues)
         .then((data) => {
-            let query = "update role set ? where ?";
+            let query = "UPDATE role SET ? WHERE ?";
             connection.query(query,
             [
                 {
@@ -367,7 +393,7 @@ function updateRole() {
 
 function addRole() {
     console.log("Adding a new role...\n");
-    let query = "select department.position, department.departName from department";
+    let query = "SELECT department.position, department.departName FROM department";
     connection.query(query, function (err, res) {
         if (err) throw err;
         const departArray = [];
@@ -403,7 +429,7 @@ function addRole() {
                 if (data.departSelect === element.departName) {
                     const departPos = element.position;
                     console.log(departPos);
-                    let query = "insert into role set ?";
+                    let query = "INSERT INTO role SET ?";
                     connection.query(query,
                     {
                         title: data.roleTitle,
@@ -424,7 +450,7 @@ function addRole() {
 
 function removeRole() {
     console.log("Deleting an existing role...\n");
-    let query = "select role.title from role";
+    let query = "SELECT role.title FROM role";
     connection.query(query, function (err, res) {
         if (err) throw err;
         const roleArray = [];
@@ -445,7 +471,7 @@ function removeRole() {
         inquirer.prompt(deleteRoleQues)
         .then((data) => {
             // console.log(res);
-            let query = "delete from role where role.title = ?";
+            let query = "DELETE FROM role WHERE role.title = ?";
             connection.query(query,
                 [
                     data.roleSelect
@@ -463,7 +489,7 @@ function removeRole() {
 function queryAllRoles() {
     let query = 'SELECT role.position, role.title, role.salary, department.departName ';
     query += 'FROM role, department WHERE role.departmentID = department.position ';
-    query += 'order by role.position;';
+    query += 'ORDER BY role.position;';
     connection.query(query, function (err, res) {
         if (err) throw err;
         const resArray = [];
@@ -495,7 +521,7 @@ function addDepartment() {
     ]
     inquirer.prompt(addDepartQues)
     .then((data) => {
-        let query = "insert into department set ?";
+        let query = "INSERT INTO department SET ?";
         connection.query(query,
         {
             departName: data.departName
@@ -510,7 +536,7 @@ function addDepartment() {
 
 function removeDepartment() {
     console.log("Deleting an existing department...\n");
-    let query = "select department.departName from department";
+    let query = "SELECT department.departName FROM department";
     connection.query(query, function (err, res) {
         if (err) throw err;
         const departArray = [];
@@ -531,7 +557,7 @@ function removeDepartment() {
         inquirer.prompt(deleteDepartQues)
         .then((data) => {
             // console.log(res);
-            let query = "delete from department where department.departName = ?";
+            let query = "DELETE FROM department WHERE department.departName = ?";
             connection.query(query,
                 [
                     data.departSelect
@@ -562,7 +588,7 @@ function queryTotalBudget() {
 }
 
 function queryEmployees() {
-    let query = "select employee.position, employee.firstName, employee.secondName, employee.roleID from employee"
+    let query = "SELECT employee.position, employee.firstName, employee.secondName, employee.roleID FROM employee"
     connection.query(query, function (err, res) {
         if (err) throw err;
         const resArray = [];
