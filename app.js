@@ -56,6 +56,7 @@ function initiateQues() {
                 'view employees by department',
                 'view employees by manager',
                 'add employee',
+                'update employee',
                 'remove employee',
                 'update employee role',
                 'update employee manager',
@@ -80,6 +81,9 @@ function initiateQues() {
             }
             else if (data.currTask === 'add employee') {
                 addEmployee();
+            }
+            else if (data.currTask === 'update employee') {
+                updateEmployee();
             }
             else if (data.currTask === 'remove employee') {
                 deleteEmployee();
@@ -241,6 +245,119 @@ function matchRoleSelect(response, data) {
             return rolePos;
         }
     })
+}
+
+function updateEmployee() {
+    console.log("Update an existing employee...\n");
+    let query01 = "SELECT role.position, role.title FROM role";
+    connection.query(query01, function (err, res01) {
+        if (err) throw err;
+        console.log(res01);
+        const roleArray = [];
+        res01.forEach(element => {
+            roleArray.push(element.title);
+        })
+        let query02 = "SELECT manager.position, manager.managerName FROM manager";
+        connection.query(query02, function (err, res02) {
+            if (err) throw err;
+            console.log(res02);
+            const managerArray = [];
+            res02.forEach(element => {
+                managerArray.push(element.managerName);
+            })
+            let query03 = "SELECT employee.position, employee.firstName, employee.lastName FROM employee";
+            connection.query(query03, function (err, res03) {
+                if (err) throw err;
+                const employeeArray = [];
+                console.log(res03);
+                res03.forEach((element, i) => {
+                    const nameStr = `${element.firstName} ${element.lastName}`
+                    employeeArray.push(nameStr);
+                })
+                console.log(roleArray);
+                console.log(managerArray);
+                console.log(employeeArray);
+                const updateEmployeeQues = [
+                    {
+                        type: 'list',
+                        message: 'Select which employee to update',
+                        name: 'nameSelect',
+                        choices: employeeArray,
+                        validate: validateName
+                    },
+                    {
+                        type: 'input',
+                        message: 'Enter employee first name',
+                        name: 'firstName',
+                        validate: validateName
+                    },
+                    {
+                        type: 'input',
+                        message: 'Enter employee last name',
+                        name: 'lastName',
+                        validate: validateName
+                    },
+                    {
+                        type: 'list',
+                        message: 'Select employee role',
+                        name: 'roleSelect',
+                        choices: roleArray
+                        // validate: validateName
+                    },
+                    {
+                        type: 'list',
+                        message: 'Assign manager',
+                        name: 'managerSelect',
+                        choices: managerArray
+                        // validate: validateName
+                    }
+                ]
+                inquirer.prompt(updateEmployeeQues)
+                .then((data) => {
+                    // console.log(res01);
+                    res01.forEach(element => {
+                        if (data.roleSelect === element.title) {
+                            const rolePos = element.position;
+                            console.log(rolePos);
+                            res02.forEach(element => {
+                                if (data.managerSelect === element.managerName) {
+                                    const managerPos = element.position;
+                                    console.log(managerPos);
+                                    const str = data.nameSelect;
+                                    const answerSplit = str.split(" ");
+                                    console.log(answerSplit[0]);
+                                    res03.forEach(element => {
+                                        if(element.firstName === answerSplit[0] && element.lastName === answerSplit[1]) {
+                                            const employPos = element.position;
+                                            let query = "UPDATE employee SET ? WHERE ?";
+                                            connection.query(query,
+                                            [
+                                                {
+                                                    firstName: data.firstName.charAt(0).toUpperCase() + data.firstName.slice(1),
+                                                    lastName: data.lastName.charAt(0).toUpperCase() + data.lastName.slice(1),
+                                                    roleID: rolePos,
+                                                    managerID: managerPos
+                                                },
+                                                {
+                                                    position: employPos
+                                                }
+                                            ],
+                                            function (err, res) {
+                                                if (err) throw err;
+                                                console.log(res.affectedRows + " employee updated!\n");
+                                                initiateQues();
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+                    // const rolePos = matchRoleSelect(res, data);
+                });
+            });
+        });
+    });
 }
 
 function deleteEmployee() {
